@@ -138,6 +138,12 @@ interface UpdatePasswordMessage {
   entry: PasswordEntry
 }
 
+interface RegisterUserMessage {
+  type: 'REGISTER_USER'
+  email: string
+  masterPassword: string
+}
+
 
 type BackgroundMessage = 
   | UnlockVaultMessage 
@@ -148,6 +154,7 @@ type BackgroundMessage =
   | HeartbeatMessage
   | DeletePasswordMessage
   | UpdatePasswordMessage
+  | RegisterUserMessage
 
 
 
@@ -192,6 +199,9 @@ async function handleMessage(message: BackgroundMessage, sender: chrome.runtime.
     case 'HEARTBEAT':
       resetAutoLockTimer() // Keep session alive
       return { success: true }
+    
+    case 'REGISTER_USER':
+      return await handleRegisterUser(message)
 
     default:
       return Promise.resolve({ success: false, error: 'Unknown message type' })
@@ -278,6 +288,76 @@ async function handleUnlockVault(message: UnlockVaultMessage): Promise<{ success
       success: false, 
       error: error.message || 'Failed to unlock vault. Check your master password.' 
     }
+  }
+}
+
+// ============================================================================
+// Register User Handler
+// ============================================================================
+
+async function handleRegisterUser(message: RegisterUserMessage): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('[Background] Registering new user:', message.email)
+    
+    // Step 1: Generate salt and derive keys
+    const salt = crypto.getRandomValues(new Uint8Array(16))
+    const derivedKey = await deriveKey(message.masterPassword, salt)
+    
+    // Step 2: Create auth proof (verifier)
+    const encoder = new TextEncoder()
+    const proofData = encoder.encode("auth-proof")
+    const proofBuffer = await crypto.subtle.sign("HMAC", derivedKey.authKey, proofData)
+    const verifier = Array.from(new Uint8Array(proofBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+
+    const saltHex = Array.from(salt)
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("")
+
+    // Step 3: Register with backend
+    const regResponse = await fetch(`${BACKEND_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: message.email,
+        salt: saltHex,
+        verifier: verifier
+      })
+    })
+
+    if (!regResponse.ok) {
+      const errorData = await regResponse.json()
+      throw new Error(errorData.message || errorData.error || 'Registration failed')
+    }
+
+    const regData = await regResponse.json()
+    console.log('[Background] User registered successfully, ID:', regData.userId)
+
+    // Step 4: Initialize an empty vault for the new user
+    const emptyVault: PasswordEntry[] = []
+    const encryptedVault = await encrypt({ 
+      site: 'VAULT_ROOT', 
+      username: 'SYSTEM', 
+      password: JSON.stringify(emptyVault) 
+    }, derivedKey)
+    
+    // Save to backend
+    await saveVault(message.email, encryptedVault, [])
+    
+    // Step 5: Store in memory to "log in" the user immediately
+    sessionState.userId = message.email
+    sessionState.derivedKey = derivedKey
+    sessionState.decryptedVault = emptyVault
+    sessionState.isLocked = false
+    
+    resetAutoLockTimer()
+    
+    return { success: true }
+
+  } catch (error: any) {
+    console.error('[Background] Registration failed:', error)
+    return { success: false, error: error.message }
   }
 }
 

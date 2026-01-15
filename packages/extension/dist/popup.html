@@ -16,11 +16,11 @@
 
       <form id="unlock-form" class="form">
         <div class="form-group">
-          <label for="user-id">User ID</label>
+          <label for="user-id">Email / User ID</label>
           <input
-            type="text"
+            type="email"
             id="user-id"
-            placeholder="Enter your user ID"
+            placeholder="Enter your email"
             autocomplete="username"
             required
           />
@@ -49,9 +49,69 @@
         </div>
       </form>
 
+      <div class="form-footer">
+        <p>Don't have an account? <a href="#" id="go-to-register">Register here</a></p>
+      </div>
+
       <div class="info">
         <p>🔒 Your master password never leaves this device</p>
         <p>⏱️ Auto-locks after 15 minutes of inactivity</p>
+      </div>
+    </div>
+
+    <!-- Register Screen -->
+    <div id="register-screen" class="screen hidden">
+      <div class="header">
+        <h1>🆕 Create Account</h1>
+        <p class="subtitle">Join the Zero-Knowledge Vault</p>
+      </div>
+
+      <form id="register-form" class="form">
+        <div class="form-group">
+          <label for="reg-email">Email Address</label>
+          <input
+            type="email"
+            id="reg-email"
+            placeholder="your@email.com"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="reg-password">Master Password</label>
+          <input
+            type="password"
+            id="reg-password"
+            placeholder="Create a strong master password"
+            required
+          />
+          <p class="field-info">This password cannot be recovered!</p>
+        </div>
+
+        <div class="form-group">
+          <label for="reg-password-confirm">Confirm Password</label>
+          <input
+            type="password"
+            id="reg-password-confirm"
+            placeholder="Re-enter master password"
+            required
+          />
+        </div>
+
+        <div id="register-error" class="error hidden"></div>
+
+        <button type="submit" id="register-btn" class="btn btn-primary">
+          Create Account
+        </button>
+
+        <div id="register-loading" class="loading hidden">
+          <div class="spinner"></div>
+          <p>Creating your vault...</p>
+        </div>
+      </form>
+
+      <div class="form-footer">
+        <p>Joined already? <a href="#" id="go-to-login">Log in here</a></p>
       </div>
     </div>
 
@@ -60,6 +120,11 @@
       <div class="header">
         <h1>🔓 Your Vault</h1>
         <button id="lock-btn" class="btn btn-secondary btn-small">Lock</button>
+      </div>
+
+      <div id="user-display" class="user-info-bar hidden">
+        <span class="user-email-label">Account: </span>
+        <span id="display-user-email" class="user-email-value"></span>
       </div>
 
       <div class="search-bar">

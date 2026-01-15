@@ -27,6 +27,7 @@ interface PasswordEntry {
 
 // Screens
 const unlockScreen = document.getElementById('unlock-screen') as HTMLElement
+const registerScreen = document.getElementById('register-screen') as HTMLElement
 const vaultScreen = document.getElementById('vault-screen') as HTMLElement
 const addPasswordScreen = document.getElementById('add-password-screen') as HTMLElement
 
@@ -37,6 +38,17 @@ const masterPasswordInput = document.getElementById('master-password') as HTMLIn
 const unlockBtn = document.getElementById('unlock-btn') as HTMLButtonElement
 const unlockLoading = document.getElementById('unlock-loading') as HTMLElement
 const unlockError = document.getElementById('unlock-error') as HTMLElement
+const goToRegisterBtn = document.getElementById('go-to-register') as HTMLElement
+
+// Register form
+const registerForm = document.getElementById('register-form') as HTMLFormElement
+const regEmailInput = document.getElementById('reg-email') as HTMLInputElement
+const regPasswordInput = document.getElementById('reg-password') as HTMLInputElement
+const regPasswordConfirmInput = document.getElementById('reg-password-confirm') as HTMLInputElement
+const registerBtn = document.getElementById('register-btn') as HTMLButtonElement
+const registerLoading = document.getElementById('register-loading') as HTMLElement
+const registerError = document.getElementById('register-error') as HTMLElement
+const goToLoginBtn = document.getElementById('go-to-login') as HTMLElement
 
 // Vault screen
 const lockBtn = document.getElementById('lock-btn') as HTMLButtonElement
@@ -44,6 +56,8 @@ const searchInput = document.getElementById('search-input') as HTMLInputElement
 const vaultList = document.getElementById('vault-list') as HTMLElement
 const emptyState = document.getElementById('empty-state') as HTMLElement
 const addPasswordBtn = document.getElementById('add-password-btn') as HTMLButtonElement
+const userDisplay = document.getElementById('user-display') as HTMLElement
+const displayUserEmail = document.getElementById('display-user-email') as HTMLElement
 
 // Add password form
 const backBtn = document.getElementById('back-btn') as HTMLButtonElement
@@ -103,6 +117,7 @@ async function init() {
 
 function showScreen(screenName: string) {
   if (unlockScreen) unlockScreen.classList.add('hidden')
+  if (registerScreen) registerScreen.classList.add('hidden')
   if (vaultScreen) vaultScreen.classList.add('hidden')
   if (addPasswordScreen) addPasswordScreen.classList.add('hidden')
   
@@ -111,8 +126,14 @@ function showScreen(screenName: string) {
       if (unlockScreen) unlockScreen.classList.remove('hidden')
       if (masterPasswordInput) masterPasswordInput.focus()
       break
+    case 'register':
+      if (registerScreen) registerScreen.classList.remove('hidden')
+      if (regEmailInput) regEmailInput.focus()
+      break
     case 'vault':
       if (vaultScreen) vaultScreen.classList.remove('hidden')
+      if (userDisplay) userDisplay.classList.remove('hidden')
+      if (displayUserEmail) displayUserEmail.textContent = currentUserId
       if (searchInput) searchInput.focus()
       break
     case 'add-password':
@@ -170,6 +191,84 @@ if (unlockForm) {
     } finally {
       if (unlockBtn) unlockBtn.disabled = false
       if (unlockLoading) unlockLoading.classList.add('hidden')
+    }
+  })
+}
+
+// Navigation
+if (goToRegisterBtn) {
+  goToRegisterBtn.addEventListener('click', (e) => {
+    e.preventDefault()
+    showScreen('register')
+  })
+}
+
+if (goToLoginBtn) {
+  goToLoginBtn.addEventListener('click', (e) => {
+    e.preventDefault()
+    showScreen('unlock')
+  })
+}
+
+// ============================================================================
+// Register User
+// ============================================================================
+
+if (registerForm) {
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    
+    const email = regEmailInput.value.trim()
+    const password = regPasswordInput.value
+    const confirm = regPasswordConfirmInput.value
+    
+    if (!email || !password || !confirm) {
+      showError(registerError, 'Please fill in all fields')
+      return
+    }
+    
+    if (password !== confirm) {
+      showError(registerError, 'Passwords do not match')
+      return
+    }
+    
+    if (password.length < 8) {
+      showError(registerError, 'Password must be at least 8 characters')
+      return
+    }
+    
+    // Show loading state
+    if (registerBtn) registerBtn.disabled = true
+    if (registerLoading) registerLoading.classList.remove('hidden')
+    if (registerError) registerError.classList.add('hidden')
+    
+    try {
+      const response = await sendMessage({
+        type: 'REGISTER_USER',
+        email,
+        masterPassword: password
+      })
+      
+      if (response && response.success) {
+        // Registration successful
+        currentUserId = email
+        await chrome.storage.local.set({ userId: email })
+        
+        // Clear inputs
+        if (regPasswordInput) regPasswordInput.value = ''
+        if (regPasswordConfirmInput) regPasswordConfirmInput.value = ''
+        
+        // Show vault
+        await loadVault()
+        showScreen('vault')
+      } else {
+        showError(registerError, (response && response.error) || 'Failed to register')
+      }
+    } catch (error: any) {
+      showError(registerError, error.message)
+    } finally {
+      if (registerBtn) registerBtn.disabled = false
+      if (registerLoading) registerLoading.classList.add('hidden')
     }
   })
 }
