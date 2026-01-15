@@ -72,7 +72,7 @@ export function useVaultSync(): [UseVaultSyncState, UseVaultSyncActions] {
       // Register with server
       const response = await apiClient.register(email, proofHex, salt)
 
-      apiClient.setToken(response.token)
+      apiClient.setToken(response.sessionToken)
       setState((prev) => ({
         ...prev,
         userId: response.userId,
@@ -95,7 +95,7 @@ export function useVaultSync(): [UseVaultSyncState, UseVaultSyncActions] {
       // Convert salt hex to buffer
       const saltBuffer = new Uint8Array(salt.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16)))
 
-      // 2. Derive key using Argon2id (same as during registration)
+      // 2. Derive keys using Argon2id (same as during registration)
       const { authKey } = await deriveKey(masterPassword, saltBuffer)
 
       // 3. Re-compute verifier (proof of knowledge of password)

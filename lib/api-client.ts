@@ -16,9 +16,10 @@ export interface SyncPayload {
 
 export interface AuthResponse {
   userId: string
-  token: string
+  sessionToken: string
   salt: string
   verifier?: string
+  serverProof?: string
 }
 
 export interface SyncResponse {
@@ -43,10 +44,10 @@ class ApiClient {
     }
   }
 
-  setToken(token: string) {
-    this.token = token
+  setToken(sessionToken: string) {
+    this.token = sessionToken
     if (typeof window !== "undefined") {
-      localStorage.setItem("auth_token", token)
+      localStorage.setItem("auth_token", sessionToken)
     }
   }
 

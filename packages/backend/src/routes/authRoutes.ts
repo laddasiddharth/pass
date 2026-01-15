@@ -49,9 +49,14 @@ export function createAuthRouter(db: Database): Router {
       // Register user (will fail if email exists)
       try {
         const user = await registerUser(db, email, salt, verifier)
+        
+        // Auto-login after registration
+        const sessionToken = await generateSessionToken(db, user.id)
+
         return res.status(201).json({
           userId: user.id,
           salt: user.salt,
+          sessionToken, // Return token so client is authenticated
         })
       } catch (dbError: any) {
         if (dbError.message?.includes("UNIQUE")) {

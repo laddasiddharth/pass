@@ -44,7 +44,7 @@ export async function encrypt(entry: VaultEntry, derivedKey: DerivedKey): Promis
       name: ALGORITHM,
       iv,
     },
-    derivedKey.key,
+    derivedKey.encryptionKey,
     plaintextBytes,
   )
 
@@ -81,7 +81,7 @@ export async function decrypt(encrypted: EncryptedVault, derivedKey: DerivedKey)
         name: ALGORITHM,
         iv: iv as BufferSource,
       },
-      derivedKey.key,
+      derivedKey.encryptionKey,
       ciphertext as BufferSource,
     )
 
