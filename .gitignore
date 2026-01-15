@@ -7,9 +7,16 @@
 **/.next/
 out/
 
-# production (backend / libs only)
+# build artifacts
+dist/
+**/dist/
 build/
 **/build/
+
+# database
+*.db
+*.sqlite
+/packages/backend/data/
 
 # debug
 npm-debug.log*

@@ -223,11 +223,7 @@ async function handleUnlockVault(message: UnlockVaultMessage): Promise<{ success
         const encryptedVault = await encrypt({ site: 'VAULT_ROOT', username: 'SYSTEM', password: JSON.stringify(emptyVault) }, derivedKey)
         
         // Save to backend
-        await fetch(`${BACKEND_URL}/api/vault/${message.userId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(encryptedVault)
-        })
+        await saveVault(message.userId, encryptedVault, [])
         
         // Store in session
         sessionState.userId = message.userId
@@ -301,14 +297,10 @@ async function handleAddPassword(message: AddPasswordMessage): Promise<{ success
     // Re-encrypt and save to backend
     const encryptedVault = await encrypt({ site: 'VAULT_ROOT', username: 'SYSTEM', password: JSON.stringify(sessionState.decryptedVault) }, sessionState.derivedKey) 
     
-    // Use the stored userId
-    const userId = sessionState.userId
+    // Extract plaintext labels for server identification
+    const labels = sessionState.decryptedVault.map(e => e.siteName)
     
-    await fetch(`${BACKEND_URL}/api/vault/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(encryptedVault)
-    })
+    await saveVault(sessionState.userId!, encryptedVault, labels)
     
     resetAutoLockTimer()
     
@@ -354,12 +346,8 @@ async function handleDeletePassword(message: DeletePasswordMessage): Promise<{ s
     // Re-encrypt and save to backend
     const encryptedVault = await encrypt({ site: 'VAULT_ROOT', username: 'SYSTEM', password: JSON.stringify(sessionState.decryptedVault) }, sessionState.derivedKey)
     
-    const userId = sessionState.userId
-    await fetch(`${BACKEND_URL}/api/vault/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(encryptedVault)
-    })
+    const labels = sessionState.decryptedVault.map(e => e.siteName)
+    await saveVault(sessionState.userId!, encryptedVault, labels)
 
     resetAutoLockTimer()
     return { success: true }
@@ -394,12 +382,8 @@ async function handleUpdatePassword(message: UpdatePasswordMessage): Promise<{ s
     // Re-encrypt and save to backend
     const encryptedVault = await encrypt({ site: 'VAULT_ROOT', username: 'SYSTEM', password: JSON.stringify(sessionState.decryptedVault) }, sessionState.derivedKey)
     
-    const userId = sessionState.userId
-    await fetch(`${BACKEND_URL}/api/vault/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(encryptedVault)
-    })
+    const labels = sessionState.decryptedVault.map(e => e.siteName)
+    await saveVault(sessionState.userId!, encryptedVault, labels)
 
     resetAutoLockTimer()
     return { success: true }
@@ -426,6 +410,21 @@ function handleLockVault(): { success: boolean } {
 
 function handleGetStatus(): { isLocked: boolean } {
   return { isLocked: sessionState.isLocked }
+}
+
+async function saveVault(userId: string, encryptedVault: EncryptedVault, labels: string[]): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/api/vault/${userId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      encryptedVault,
+      labels
+    })
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to save vault: ${response.statusText}`)
+  }
 }
 
 // ============================================================================

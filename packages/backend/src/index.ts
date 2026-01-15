@@ -1,29 +1,26 @@
 /**
  * Blind synchronization backend for zero-knowledge password manager.
- *
- * This server implements Phase 2 of the password manager architecture.
- * It stores encrypted vault blobs and authenticates users without ever
- * handling plaintext passwords or decrypted vault contents.
  */
 
+import "dotenv/config"
 import express from "express"
 import path from "path"
 import { fileURLToPath } from "url"
-import { initializeDatabase, closeDatabase } from "./database/schema.js"
+import { connectToDatabase, closeDatabase } from "./database/index.js"
+import { SimpleVault } from "./database/models.js"
 import { createAuthRouter } from "./routes/authRoutes.js"
 import { createSyncRouter } from "./routes/syncRoutes.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3001
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, "../data/vault.db")
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/vault"
 
 async function start() {
   try {
-    console.log("[v0] Starting blind synchronization backend...")
+    console.log("[v0] Starting blind synchronization backend with MongoDB...")
 
     // Initialize database
-    const db = await initializeDatabase(DB_PATH)
-    console.log(`[v0] Database initialized at ${DB_PATH}`)
+    await connectToDatabase(MONGODB_URI)
 
     // Create Express app
     const app = express()
@@ -43,48 +40,65 @@ async function start() {
     // Middleware
     app.use(express.json())
 
-    // Request logging (non-sensitive)
+    // Request logging
     app.use((req, res, next) => {
       console.log(`[v0] ${req.method} ${req.path}`)
       next()
     })
 
     // Routes
-    app.use("/auth", createAuthRouter(db))
-    app.use("/sync", createSyncRouter(db))
+    app.use("/auth", createAuthRouter())
+    app.use("/sync", createSyncRouter())
 
-    // Phase 3 compatibility routes for extension
-    // Simple vault storage (blind synchronize)
-    const vaults = new Map<string, any>()
-    
-    app.get("/api/vault/:userId", (req, res) => {
-      const { userId } = req.params
-      console.log(`[v0] Extension GET /api/vault/${userId}`)
-      const vault = vaults.get(userId)
-      if (!vault) return res.status(404).json({ error: "Vault not found" })
-      res.json(vault)
+    // Phase 3 compatibility routes for extension (Now using MongoDB)
+    app.get("/api/vault/:userId", async (req, res) => {
+      try {
+        const { userId } = req.params
+        const vault = await SimpleVault.findOne({ userId })
+        if (!vault) return res.status(404).json({ error: "Vault not found" })
+        res.json(vault.data)
+      } catch (error) {
+        res.status(500).json({ error: "Failed to fetch vault" })
+      }
     })
 
-    app.put("/api/vault/:userId", (req, res) => {
+    app.put("/api/vault/:userId", async (req, res) => {
       const { userId } = req.params
-      console.log(`[v0] Extension PUT /api/vault/${userId}`)
-      vaults.set(userId, req.body)
-      res.json({ success: true })
+      try {
+        console.log(`[v0] Extension saving vault for ${userId}...`)
+        
+        // Extract data and labels (if provided)
+        const { encryptedVault, labels } = req.body
+        
+        await SimpleVault.findOneAndUpdate(
+          { userId },
+          { 
+            data: encryptedVault || req.body, // Fallback for old extension version
+            labels: labels || [],
+            updatedAt: new Date() 
+          },
+          { upsert: true }
+        )
+        
+        console.log(`[v0] Vault saved to MongoDB for ${userId} with ${labels?.length || 0} labels`)
+        res.json({ success: true })
+      } catch (error) {
+        console.error(`[v0] Failed to save vault for ${userId}:`, error)
+        res.status(500).json({ error: "Failed to save vault" })
+      }
     })
 
     // Health check endpoint
     app.get("/health", (req, res) => {
       res.json({ 
         status: "ok", 
-        timestamp: new Date().toISOString(),
-        apiStyles: ["phase2", "phase3"],
-        activeVaults: vaults.size
+        db: "mongodb",
+        timestamp: new Date().toISOString()
       })
     })
 
     // 404 handler
     app.use((req, res) => {
-      console.warn(`[v0] 404 Not Found: ${req.method} ${req.path}`)
       res.status(404).json({
         error: "Not found",
         code: "NOT_FOUND",
@@ -98,22 +112,19 @@ async function start() {
       res.status(500).json({
         error: "Internal server error",
         code: "INTERNAL_ERROR",
-        message: "An unexpected error occurred",
       })
     })
 
     // Start server
     const server = app.listen(PORT, () => {
       console.log(`[v0] Blind sync backend listening on port ${PORT}`)
-      console.log(`[v0] Health check: GET http://localhost:${PORT}/health`)
     })
 
     // Graceful shutdown
     const shutdown = async () => {
       console.log("[v0] Shutting down gracefully...")
       server.close(async () => {
-        await closeDatabase(db)
-        console.log("[v0] Database closed, exiting")
+        await closeDatabase()
         process.exit(0)
       })
     }
