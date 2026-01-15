@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Password Manager</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <!-- Unlock Screen -->
+    <div id="unlock-screen" class="screen">
+      <div class="header">
+        <h1>🔐 Password Manager</h1>
+        <p class="subtitle">Zero-Knowledge Security</p>
+      </div>
+
+      <form id="unlock-form" class="form">
+        <div class="form-group">
+          <label for="user-id">User ID</label>
+          <input
+            type="text"
+            id="user-id"
+            placeholder="Enter your user ID"
+            autocomplete="username"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="master-password">Master Password</label>
+          <input
+            type="password"
+            id="master-password"
+            placeholder="Enter your master password"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+
+        <div id="unlock-error" class="error hidden"></div>
+
+        <button type="submit" id="unlock-btn" class="btn btn-primary">
+          Unlock Vault
+        </button>
+
+        <div id="unlock-loading" class="loading hidden">
+          <div class="spinner"></div>
+          <p>Unlocking vault...</p>
+        </div>
+      </form>
+
+      <div class="info">
+        <p>🔒 Your master password never leaves this device</p>
+        <p>⏱️ Auto-locks after 15 minutes of inactivity</p>
+      </div>
+    </div>
+
+    <!-- Vault Screen -->
+    <div id="vault-screen" class="screen hidden">
+      <div class="header">
+        <h1>🔓 Your Vault</h1>
+        <button id="lock-btn" class="btn btn-secondary btn-small">Lock</button>
+      </div>
+
+      <div class="search-bar">
+        <input
+          type="text"
+          id="search-input"
+          placeholder="Search passwords..."
+        />
+      </div>
+
+      <div id="vault-list" class="vault-list">
+        <!-- Vault entries will be inserted here -->
+      </div>
+
+      <div class="empty-state hidden" id="empty-state">
+        <p>No passwords saved yet</p>
+        <p class="subtitle">Click "Add Password" to get started</p>
+      </div>
+
+      <button id="add-password-btn" class="btn btn-primary btn-fixed">
+        + Add Password
+      </button>
+    </div>
+
+    <!-- Add Password Screen -->
+    <div id="add-password-screen" class="screen hidden">
+      <div class="header">
+        <button id="back-btn" class="btn btn-secondary btn-small">
+          ← Back
+        </button>
+        <h1 id="add-password-title">Add Password</h1>
+      </div>
+
+      <form id="add-password-form" class="form">
+        <div class="form-group">
+          <label for="site-name">Website/Service</label>
+          <input
+            type="text"
+            id="site-name"
+            placeholder="e.g., GitHub, Gmail"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="site-url">URL</label>
+          <input
+            type="url"
+            id="site-url"
+            placeholder="https://example.com"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="username">Username/Email</label>
+          <input
+            type="text"
+            id="username"
+            placeholder="your@email.com"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <div class="password-input-group">
+            <input
+              type="password"
+              id="password"
+              placeholder="Enter password"
+              required
+            />
+            <button type="button" id="toggle-password" class="btn-icon">
+              👁️
+            </button>
+            <button type="button" id="generate-password" class="btn-icon">
+              🎲
+            </button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Notes (optional)</label>
+          <textarea
+            id="notes"
+            placeholder="Additional information"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div id="add-error" class="error hidden"></div>
+
+        <button type="submit" class="btn btn-primary">Save Password</button>
+      </form>
+    </div>
+
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>

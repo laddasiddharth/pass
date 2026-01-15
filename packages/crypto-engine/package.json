@@ -1,0 +1,32 @@
+{
+  "name": "@password-manager/crypto-engine",
+  "version": "1.0.0",
+  "description": "Zero-knowledge cryptographic core for password managers",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --loader tsx ./test/example.test.ts",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["cryptography", "password-manager", "zero-knowledge", "aes-256-gcm", "argon2id", "encryption"],
+  "dependencies": {
+    "@noble/hashes": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

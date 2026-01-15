@@ -1,0 +1,22 @@
+<svg width="128" height="128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4f46e5;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="url(#grad)"/>
+  
+  <!-- Lock body -->
+  <rect x="44" y="60" width="40" height="36" rx="4" fill="white"/>
+  
+  <!-- Lock shackle -->
+  <path d="M 50 60 L 50 48 Q 50 36 64 36 Q 78 36 78 48 L 78 60" 
+        stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+  
+  <!-- Keyhole -->
+  <circle cx="64" cy="72" r="4" fill="#6366f1"/>
+  <rect x="62" y="72" width="4" height="8" fill="#6366f1"/>
+</svg>
