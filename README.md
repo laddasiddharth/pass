@@ -93,7 +93,3 @@ node build.js
 - ✅ **Blind Synchronization**: Sync your encrypted vault across devices without the server ever seeing your passwords.
 - ✅ **Plaintext Labels**: Securely store identifying site names/labels for easy management while keeping credentials encrypted.
 - ✅ **Auto-Lock**: The extension automatically locks and clears sensitive keys from memory after 15 minutes of inactivity.
-
-## 📜 License
-
-This project is for educational and personal use. Security-sensitive applications should always undergo a full independent audit.
