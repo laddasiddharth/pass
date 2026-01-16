@@ -29,6 +29,7 @@ This backend provides the following guarantees:
 Register a new user with password verifier.
 
 **Request:**
+
 ```json
 {
   "email": "user@example.com",
@@ -38,10 +39,12 @@ Register a new user with password verifier.
 ```
 
 The `salt` and `verifier` are computed client-side from the master password:
+
 - `salt`: Random bytes used in Argon2id
 - `verifier`: HMAC-SHA256(Argon2id_key, "verifier") - proves the client knows the password
 
 **Response (201):**
+
 ```json
 {
   "userId": "uuid",
@@ -50,6 +53,7 @@ The `salt` and `verifier` are computed client-side from the master password:
 ```
 
 **Error Cases:**
+
 - `400`: Missing or invalid fields
 - `409`: Email already registered
 
@@ -60,6 +64,7 @@ The `salt` and `verifier` are computed client-side from the master password:
 Authenticate user using SRP-style verifier exchange.
 
 **Request:**
+
 ```json
 {
   "email": "user@example.com",
@@ -69,10 +74,12 @@ Authenticate user using SRP-style verifier exchange.
 ```
 
 The client computes:
+
 - `challenge`: Random bytes
 - `clientProof`: HMAC-SHA256(Argon2id_key + challenge, "proof")
 
 **Response (200):**
+
 ```json
 {
   "userId": "uuid",
@@ -85,6 +92,7 @@ The client computes:
 The client verifies `serverProof` to confirm the server knows the verifier.
 
 **Error Cases:**
+
 - `400`: Missing or invalid fields
 - `401`: Authentication failed (invalid email or password)
 
@@ -97,12 +105,14 @@ The client verifies `serverProof` to confirm the server knows the verifier.
 Push encrypted vault to server.
 
 **Headers:**
+
 ```
 Authorization: Bearer <sessionToken>
 Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "userId": "uuid",
@@ -120,6 +130,7 @@ Content-Type: application/json
 ```
 
 **Response (201):**
+
 ```json
 {
   "vaultId": "uuid"
@@ -127,6 +138,7 @@ Content-Type: application/json
 ```
 
 **Error Cases:**
+
 - `400`: Invalid vault structure or duplicate nonce
 - `401`: Missing or invalid session token
 - `403`: Trying to push vault for another user
@@ -138,12 +150,14 @@ Content-Type: application/json
 Pull encrypted vaults from server.
 
 **Headers:**
+
 ```
 Authorization: Bearer <sessionToken>
 Content-Type: application/json
 ```
 
 **Request:**
+
 ```json
 {
   "userId": "uuid",
@@ -155,6 +169,7 @@ Content-Type: application/json
 If `lastVersion` is provided, only vaults after that version are returned.
 
 **Response (200):**
+
 ```json
 {
   "vaults": [
@@ -179,62 +194,43 @@ If `lastVersion` is provided, only vaults after that version are returned.
 ```
 
 **Error Cases:**
+
 - `400`: Invalid request
 - `401`: Missing or invalid session token
 - `403`: Trying to pull vault for another user
 
 ---
 
-## Database Schema
+## Database Schema (MongoDB)
 
-### Users Table
-```sql
-CREATE TABLE users (
-  id TEXT PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  salt TEXT NOT NULL,
-  verifier TEXT NOT NULL,
-  createdAt INTEGER NOT NULL,
-  updatedAt INTEGER NOT NULL
-);
-```
+The backend uses MongoDB with Mongoose for storage. The primary collections are:
 
-**Fields:**
-- `salt`: Random salt for Argon2id (shared with client during login)
-- `verifier`: HMAC result from password verification (server can verify proofs)
+### Users (`User`)
 
-### VaultBlobs Table
-```sql
-CREATE TABLE vaultBlobs (
-  id TEXT PRIMARY KEY,
-  userId TEXT NOT NULL,
-  deviceId TEXT NOT NULL,
-  ciphertext TEXT NOT NULL,
-  salt TEXT NOT NULL,
-  iv TEXT NOT NULL,
-  authTag TEXT NOT NULL,
-  version INTEGER NOT NULL,
-  timestamp INTEGER NOT NULL,
-  nonce TEXT UNIQUE NOT NULL,
-  createdAt INTEGER NOT NULL,
-  updatedAt INTEGER NOT NULL
-);
-```
+- `email`: (String, Unique)
+- `salt`: (String) Random salt for Argon2id
+- `verifier`: (String) HMAC-SHA256 result for password proof
+- `createdAt`: (Date)
+- `updatedAt`: (Date)
 
-**Fields:**
-- `ciphertext`: Base64-encoded AES-256-GCM ciphertext (opaque to server)
-- `nonce`: Unique random nonce to prevent replay attacks
+### VaultBlobs (`VaultBlob`)
 
-### SessionTokens Table
-```sql
-CREATE TABLE sessionTokens (
-  id TEXT PRIMARY KEY,
-  userId TEXT NOT NULL,
-  token TEXT UNIQUE NOT NULL,
-  expiresAt INTEGER NOT NULL,
-  createdAt INTEGER NOT NULL
-);
-```
+- `userId`: (ObjectId) Reference to User
+- `deviceId`: (String)
+- `ciphertext`: (String) Base64 AES-256-GCM ciphertext
+- `salt`: (String) Base64 Argon2id salt
+- `iv`: (String) Base64 GCM IV
+- `authTag`: (String) Base64 GCM authentication tag
+- `version`: (Number)
+- `nonce`: (String, Unique) For replay protection
+
+### SimpleVaults (`SimpleVault`)
+
+Used by the browser extension for direct sync:
+
+- `userId`: (String, Unique)
+- `data`: (Mixed) Encrypted vault object
+- `labels`: ([String]) Plaintext site labels for UI convenience
 
 ---
 
@@ -244,56 +240,49 @@ CREATE TABLE sessionTokens (
 
 2. **Cannot Derive Keys**: The encryption key is derived from the master password using Argon2id on the client. The server has no access to this derivation.
 
-3. **Cannot Decrypt Vaults**: Even with database access, an attacker cannot decrypt vaults because:
-   - The encryption key is never stored server-side
-   - The salt and IV are included in the ciphertext, but without the key, they're useless
-   - The authentication tag ensures ciphertext integrity
+3. **Cannot Decrypt Vaults**: Even with database access, an attacker cannot decrypt vaults because the encryption key is never stored server-side.
 
-4. **Cannot Forge Authentication**: The verifier is HMAC-derived from the password on the client. A compromised database cannot be used to forge login proofs.
-
-5. **No Server-Side Merging**: Sync is metadata-only. Clients handle vault merging logic.
+4. **Cannot Forge Authentication**: A compromised database cannot be used to forge login proofs because they are HMAC-derived on the client.
 
 ---
 
 ## Running the Backend
 
 ### Prerequisites
+
 - Node.js 18+
-- npm or yarn
+- MongoDB (Atlas or local)
 
 ### Installation
+
 ```bash
 cd packages/backend
 npm install
 ```
 
 ### Development
+
 ```bash
 npm run dev
 ```
 
-Starts the server on `http://localhost:3001`
-
-### Build
-```bash
-npm run build
-```
-
-Compiles TypeScript to `dist/`
+Starts the server on `http://localhost:3001` using connection string from `.env`.
 
 ### Production
+
 ```bash
+npm run build
 npm run start
 ```
-
-Requires `NODE_ENV=production` and proper database path via `DB_PATH` environment variable.
 
 ---
 
 ## Environment Variables
 
+Create a `.env` file in the backend root:
+
 - `PORT`: Server port (default: 3001)
-- `DB_PATH`: Path to SQLite database file (default: `./data/vault.db`)
+- `MONGODB_URI`: MongoDB connection string (e.g., `mongodb+srv://...` or `mongodb://localhost:27017/vault`)
 - `NODE_ENV`: Set to `production` for production deployments
 
 ---
@@ -346,12 +335,14 @@ curl http://localhost:3001/health
 ## Deployment
 
 This backend is stateless and can be deployed on:
+
 - Node.js hosting (Heroku, Railway, Render, Vercel)
 - Docker containers
 - Traditional VPS/bare metal
 - Serverless (with external database)
 
 Make sure to:
+
 1. Use a persistent database (not ephemeral storage)
 2. Enable HTTPS/TLS
 3. Set strong `NODE_ENV=production`
