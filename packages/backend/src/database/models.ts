@@ -99,8 +99,29 @@ const SimpleVaultSchema = new Schema<ISimpleVault>({
   updatedAt: { type: Date, default: Date.now },
 })
 
+// OTP Schema for email verification
+export interface IOTP extends Document {
+  email: string
+  code: string
+  expiresAt: Date
+  verified: boolean
+  createdAt: Date
+}
+
+const OTPSchema = new Schema<IOTP>({
+  email: { type: String, required: true },
+  code: { type: String, required: true },
+  expiresAt: { type: Date, required: true },
+  verified: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
+})
+
+// Index for automatic deletion of expired OTPs
+OTPSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 })
+
 export const User = mongoose.model<IUser>("User", UserSchema)
 export const Session = mongoose.model<ISession>("Session", SessionSchema)
 export const VaultBlob = mongoose.model<IVaultBlob>("VaultBlob", VaultBlobSchema)
 export const SyncMetadata = mongoose.model<ISyncMetadata>("SyncMetadata", SyncMetadataSchema)
 export const SimpleVault = mongoose.model<ISimpleVault>("SimpleVault", SimpleVaultSchema)
+export const OTP = mongoose.model<IOTP>("OTP", OTPSchema)

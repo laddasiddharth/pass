@@ -7,12 +7,14 @@ import { deriveKey } from "@password-manager/crypto-engine"
 
 export interface UseVaultSyncState {
   userId: string | null
+  email: string | null
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
   lastSyncTime: number | null
   version: number
   vaults: VaultEntry[]
+  salt: string | null
 }
 
 export interface UseVaultSyncActions {
@@ -26,12 +28,14 @@ export interface UseVaultSyncActions {
 export function useVaultSync(): [UseVaultSyncState, UseVaultSyncActions] {
   const [state, setState] = useState<UseVaultSyncState>({
     userId: null,
+    email: null,
     isAuthenticated: false,
     isLoading: false,
     error: null,
     lastSyncTime: null,
     version: 0,
     vaults: [],
+    salt: null,
   })
 
   const deviceIdRef = useRef<string>("")
@@ -45,6 +49,25 @@ export function useVaultSync(): [UseVaultSyncState, UseVaultSyncActions] {
         const newId = uuidv4()
         localStorage.setItem("device_id", newId)
         deviceIdRef.current = newId
+      }
+      
+      // Restore authentication state from localStorage
+      const storedSalt = localStorage.getItem("user_salt")
+      const storedUserId = localStorage.getItem("user_id")
+      const storedEmail = localStorage.getItem("user_email")
+      const storedToken = localStorage.getItem("auth_token")
+      
+      if (storedSalt && storedUserId && storedToken && storedEmail) {
+        // Restore session token to API client
+        apiClient.setToken(storedToken)
+        
+        setState(prev => ({ 
+          ...prev, 
+          salt: storedSalt,
+          userId: storedUserId,
+          email: storedEmail,
+          isAuthenticated: true
+        }))
       }
     }
   }, [])
@@ -73,11 +96,16 @@ export function useVaultSync(): [UseVaultSyncState, UseVaultSyncActions] {
       const response = await apiClient.register(email, proofHex, salt)
 
       apiClient.setToken(response.sessionToken)
+      localStorage.setItem("user_salt", salt)
+      localStorage.setItem("user_id", response.userId)
+      localStorage.setItem("user_email", email)
       setState((prev) => ({
         ...prev,
         userId: response.userId,
+        email: email,
         isAuthenticated: true,
         isLoading: false,
+        salt: salt,
       }))
     } catch (err) {
       const message = err instanceof Error ? err.message : "Registration failed"
@@ -124,11 +152,16 @@ export function useVaultSync(): [UseVaultSyncState, UseVaultSyncActions] {
       const response = await apiClient.login(email, challenge, clientProof)
 
       apiClient.setToken(response.sessionToken)
+      localStorage.setItem("user_salt", salt)
+      localStorage.setItem("user_id", response.userId)
+      localStorage.setItem("user_email", email)
       setState((prev) => ({
         ...prev,
         userId: response.userId,
+        email: email,
         isAuthenticated: true,
         isLoading: false,
+        salt: salt,
       }))
     } catch (err) {
       const message = err instanceof Error ? err.message : "Login failed"
@@ -139,14 +172,19 @@ export function useVaultSync(): [UseVaultSyncState, UseVaultSyncActions] {
 
   const logout = useCallback(() => {
     apiClient.clearToken()
+    localStorage.removeItem("user_salt")
+    localStorage.removeItem("user_id")
+    localStorage.removeItem("user_email")
     setState({
       userId: null,
+      email: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
       lastSyncTime: null,
       version: 0,
       vaults: [],
+      salt: null,
     })
   }, [])
 

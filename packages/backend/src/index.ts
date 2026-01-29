@@ -10,6 +10,7 @@ import { connectToDatabase, closeDatabase } from "./database/index.js"
 import { SimpleVault } from "./database/models.js"
 import { createAuthRouter } from "./routes/authRoutes.js"
 import { createSyncRouter } from "./routes/syncRoutes.js"
+import { createOTPRouter } from "./routes/otpRoutes.js"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3001
@@ -49,6 +50,7 @@ async function start() {
     // Routes
     app.use("/auth", createAuthRouter())
     app.use("/sync", createSyncRouter())
+    app.use("/otp", createOTPRouter())
 
     // Phase 3 compatibility routes for extension (Now using MongoDB)
     app.get("/api/vault/:userId", async (req, res) => {
@@ -85,6 +87,21 @@ async function start() {
       } catch (error) {
         console.error(`[v0] Failed to save vault for ${userId}:`, error)
         res.status(500).json({ error: "Failed to save vault" })
+      }
+    })
+
+    // DELETE vault (for resetting/debugging)
+    // WARNING: This endpoint should be protected with authentication in production
+    // or removed entirely. Currently useful for development and testing.
+    app.delete("/api/vault/:userId", async (req, res) => {
+      try {
+        const { userId } = req.params
+        await SimpleVault.deleteOne({ userId })
+        console.log(`[v0] Vault deleted for ${userId}`)
+        res.json({ success: true, message: "Vault deleted" })
+      } catch (error) {
+        console.error(`[v0] Failed to delete vault:`, error)
+        res.status(500).json({ error: "Failed to delete vault" })
       }
     })
 

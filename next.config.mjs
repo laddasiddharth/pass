@@ -6,6 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  transpilePackages: ["@password-manager/crypto-engine"],
 }
 
 export default nextConfig
